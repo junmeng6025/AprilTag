@@ -5,6 +5,8 @@
 #include "pose.h"
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <string>
+#include <iostream>
 
 int main(int argc, char** argv) {
 
@@ -89,8 +91,8 @@ int main(int argc, char** argv) {
   const char* window = "AprilTag";
 
   cv::Mat frame;
-
   cv::namedWindow(window);
+  int num_savedimg = 0;
 
   while (1) {
     bool ok = cap->read(frame);
@@ -113,6 +115,7 @@ int main(int argc, char** argv) {
     printf("Detected %d tags.\n", zarray_size(detections));
 
     cv::Mat display = detectionsImage(detections, frame.size(), frame.type());
+    cv::Mat display_copy = display.clone();
 
     for (int i = 0; i < zarray_size(detections); i++) {
       apriltag_detection_t *det;
@@ -121,6 +124,13 @@ int main(int argc, char** argv) {
       matd_t* M = pose_from_homography(det->H, fx, fy, cx, cy,
                                        tagsize, z_sign, det->p, NULL, NULL);
 
+      // printf("Detection %d of %d:\n \tFamily: tag%2dh%2d\n \tID: %d\n \tHamming: %d\n"
+      //        "\tGoodness: %.3f\n \tMargin: %.3f\n \tCenter: (%.3f,%.3f)\n"
+      //        "\tCorners: (%.3f,%.3f)\n\t\t (%.3f,%.3f)\n\t\t (%.3f,%.3f)\n\t\t (%.3f,%.3f)\n",
+      //        i+1, zarray_size(detections), det->family->d*det->family->d, det->family->h,
+      //        det->id, det->hamming, det->goodness, det->decision_margin, det->c[0], det->c[1],
+      //        det->p[0][0], det->p[0][1], det->p[1][0], det->p[1][1], det->p[2][0], det->p[2][1],
+      //        det->p[3][0], det->p[3][1]);
       printf("Detection %d of %d:\n \tFamily: tag%2dh%2d\n \tID: %d\n \tHamming: %d\n"
              "\tGoodness: %.3f\n \tMargin: %.3f\n \tCenter: (%.3f,%.3f)\n"
              "\tCorners: (%.3f,%.3f)\n\t\t (%.3f,%.3f)\n\t\t (%.3f,%.3f)\n\t\t (%.3f,%.3f)\n",
@@ -132,14 +142,39 @@ int main(int argc, char** argv) {
       matd_print(det->H, MAT_FMT);
       printf("\tPose:\n");
       matd_print(M, MAT_FMT);
+
+      std::vector< cv::Point> vec_contour;
+      for (int i = 0; i < 4; i++)
+      {
+        vec_contour.push_back(cv::Point(det->p[i][0], det->p[i][1]));
+      }
+      const cv::Point *pts = (const cv::Point*) cv::Mat(vec_contour).data;
+      int npts = cv::Mat(vec_contour).rows;
+
+      cv::polylines(display_copy, &pts, &npts, 1, true, cv::Scalar(0, 255, 0), 8);
+      cv::putText(display_copy, std::to_string(det->id), cv::Point(det->c[0], det->c[1]), CV_FONT_NORMAL, 1, cv::Scalar(0, 0, 255), 2, 1);
     }
 
     printf("\n");
 
     apriltag_detections_destroy(detections);
 
-    display = 0.5*display + 0.5*frame;
+    display = 0.5*frame + 0.5*display_copy;
     cv::imshow(window, display);
+
+    int k_shapshot = cv::waitKey(1);
+    if (k_shapshot == 97)  // 'a'
+    {
+      if(frame.empty())
+      {
+        std::cerr << "Something is wrong with the webcam, could not get frame." << std::endl;
+      }
+      // Save the frame into a file
+      num_savedimg++;
+      imwrite("../../saved_img/saved_img_" + std::to_string(num_savedimg) + ".bmp", frame);
+      std::cout << "########### image " + std::to_string(num_savedimg) + " saved successfully! ###########" << std::endl;
+    }
+
     image_u8_destroy(im8);
 
     int k = cv::waitKey(1);
