@@ -26,10 +26,10 @@ Check the [original README](README_original.md) of @Tinker-Twins
   > **Pre-requisition:** already setup the camera connection package `v4l2loopback`.  
   > Check the [SONY a7r4 setup guide](SONYa7r4_setup.md) if you haven't done this yet
   ### Step 1
-    ```bash
-    cd v4l2loopback/
-    sudo modprobe v4l2loopback
-    ```
+  ```bash
+  cd v4l2loopback/
+  sudo modprobe v4l2loopback
+  ```
   ### Step 2
   ```bash
   ls -1 /sys/devices/virtual/video4linux
